@@ -1,12 +1,12 @@
 from enum import IntEnum
 
 
-class Percept(IntEnum):
+'''class Percept(IntEnum):
     Glitter = 0
     Breeze = 1
     Stench = 2
     Scream = 3
-    SunLight = 4
+    SunLight = 4'''
 
 
 class Action(IntEnum):
@@ -17,6 +17,10 @@ class Action(IntEnum):
     Shoot = 4
     Climb = 5
 
+    def __repr__(self):
+        names = ['GoForward', 'TurnLeft', 'TurnRight', 'Grab', 'Shoot', 'Climb']
+        return names[self.value]
+
 
 class Orientation(IntEnum):
     Up = 0
@@ -25,11 +29,19 @@ class Orientation(IntEnum):
     Left = 3
 
 
+class RelativeOrientation(IntEnum):
+    Front = 0
+    Right = 1
+    Back = 2
+    Left = 3
+
+
 class RoomReal(IntEnum):
-    Unknown = 0
-    Safe = 1
-    Breeze = 2
-    Stench = 3
+    Unvisited = 0
+    Glitter = 1
+    Safe = 2
+    Breeze = 3
+    Stench = 4
 
 
 class RoomPredict(IntEnum):
@@ -42,15 +54,21 @@ class RoomPredict(IntEnum):
 
 
 def getAdjacents(map_size, x, y):
-    res = []
-    for dx, dy in ([0, 1], [1, 0], [0, -1], [-1, 0]):
+    """
+    Param: map_size and current position
+    Return: Oxy position of each room corresponding in each direction or None, [Up, Right, Down, Left]
+    """
+    res = [None, None, None, None]
+    for i, d in enumerate(([0, 1], [1, 0], [0, -1], [-1, 0])):
+        dx = d[0]
+        dy = d[1]
         next_x = x + dx
         next_y = y + dy
 
         if next_x < 1 or next_x > map_size or next_y < 1 or next_y > map_size:
             continue
 
-        res.append([next_x, next_y])
+        res[i] = [next_x, next_y]
     return res
 
 

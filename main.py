@@ -14,11 +14,8 @@ def main():
     num_moves = 0
 
     while (not world.isGameOver()) and (num_moves < MAX_MOVES):
-        percepts = world.getPercept()
-        print(percepts)
-
-        actions = agent.process(percepts)
-        print(actions)
+        actions = agent.process()
+        print('Action:', actions)
 
         world.execute(agent, actions)
         num_moves += 1
@@ -29,3 +26,5 @@ def main():
 
 
 main()
+
+# TODO: print map each step

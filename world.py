@@ -63,7 +63,7 @@ class World(object):
         # Generate agent spawn location if not provided in the map
         if self.agent_spawn_location is None or self.agent_current_location is None:
             i, j = toCArrayIndex(self.map_size, x, y)
-            while (i is None) or (j is None) or ("P" in self.map[i, j]) or ("W" in self.map[i, j]) or ("B" in self.map[i, j]) or ("S" in self.map[i, j]):
+            while (i is None) or (j is None) or ("G" in self.map[i, j]) and ("P" in self.map[i, j]) or ("W" in self.map[i, j]) or ("B" in self.map[i, j]) or ("S" in self.map[i, j]):  # nothing in the spawn location
                 x = randrange(1, self.map_size + 1)
                 y = randrange(1, self.map_size + 1)
                 i, j = toCArrayIndex(self.map_size, x, y)
@@ -77,7 +77,7 @@ class World(object):
         self.total_score = 0
 
         # Map to save the real data (agent's point of view)
-        agent.map_real = np.full((self.map_size, self.map_size, 1), [RoomReal.Unknown], dtype=object)
+        agent.map_real = np.full((self.map_size, self.map_size, 1), [RoomReal.Unvisited], dtype=object)
 
         # Map to save the agent's predictions
         agent.map_predict = np.full((self.map_size, self.map_size, 1), [RoomPredict.Unknown], dtype=object)
@@ -99,8 +99,9 @@ class World(object):
         # Room next to spawn room is (of course) predict to be safe
         agent.map_predict[agent_spawn_i, agent_spawn_j] = [RoomPredict.Safe]
         for room in adj_rooms:
-            room_i, room_j = toCArrayIndex(self.map_size, room[0], room[1])
-            agent.map_predict[room_i, room_j] = [RoomPredict.Safe]
+            if room is not None:
+                room_i, room_j = toCArrayIndex(self.map_size, room[0], room[1])
+                agent.map_predict[room_i, room_j] = [RoomPredict.Safe]
 
     def isGameOver(self):
         """
@@ -112,7 +113,7 @@ class World(object):
         """
         return (not self.agent_alive) or (self.remain_wumpus == 0 and self.remain_gold == 0) or self.agent_got_out
 
-    def getPercept(self):
+    '''def getPercept(self):
         """
         Param: nothing
         Return: an array of boolean with format of
@@ -133,15 +134,15 @@ class World(object):
 
         adj_rooms = getAdjacents(self.map_size, self.agent_current_location[0], self.agent_current_location[1])
         for room in adj_rooms:
-            room_i, room_j = toCArrayIndex(self.map_size, room[0], room[1])
-
-            if "P" in self.map[room_i, room_j]:
-                res[Percept.Breeze] = True
-            if "W" in self.map[room_i, room_j]:
-                res[Percept.Stench] = True
+            if room is not None:
+                room_i, room_j = toCArrayIndex(self.map_size, room[0], room[1])
+                if "P" in self.map[room_i, room_j]:
+                    res[Percept.Breeze] = True
+                if "W" in self.map[room_i, room_j]:
+                    res[Percept.Stench] = True
 
         self.agent_hit_wumpus_last_turn = False
-        return res
+        return res'''
 
     def execute(self, agent, action):
         """
