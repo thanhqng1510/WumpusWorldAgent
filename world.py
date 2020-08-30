@@ -143,7 +143,7 @@ class World(object):
         self.agent_hit_wumpus_last_turn = False
         return res
 
-    def executeAction(self, agent, action):
+    def execute(self, agent, action):
         """
         Param: an agent and an Action to perform
         Return: nothing

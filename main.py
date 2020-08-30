@@ -17,10 +17,10 @@ def main():
         percepts = world.getPercept()
         print(percepts)
 
-        action = agent.process(percepts)
-        print(action)
+        actions = agent.process(percepts)
+        print(actions)
 
-        world.executeAction(agent, action)
+        world.execute(agent, actions)
         num_moves += 1
         print('--------------------')
 

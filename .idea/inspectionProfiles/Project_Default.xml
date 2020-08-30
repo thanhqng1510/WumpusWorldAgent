@@ -6,6 +6,8 @@
         <list>
           <option value="E101" />
           <option value="W191" />
+          <option value="E501" />
+          <option value="E202" />
         </list>
       </option>
     </inspection_tool>
@@ -14,6 +16,21 @@
         <list>
           <option value="N802" />
           <option value="N806" />
+        </list>
+      </option>
+    </inspection_tool>
+    <inspection_tool class="PyShadowingBuiltinsInspection" enabled="true" level="WEAK WARNING" enabled_by_default="true">
+      <option name="ignoredNames">
+        <list>
+          <option value="map" />
+        </list>
+      </option>
+    </inspection_tool>
+    <inspection_tool class="PyUnresolvedReferencesInspection" enabled="true" level="WARNING" enabled_by_default="true">
+      <option name="ignoredIdentifiers">
+        <list>
+          <option value="testpyprover.E" />
+          <option value="testpyprover.*" />
         </list>
       </option>
     </inspection_tool>

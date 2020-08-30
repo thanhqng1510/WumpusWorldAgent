@@ -23,7 +23,7 @@ class Agent(object):
         """
         Param: an array of boolean with format of
         [ Glitter, Breeze, Stench, Scream, SunLight ]
-        Return: an Action
+        Return: an array of Action
 
         What do I need to do ???
         Rules: Go to Unknown room with safe prediction, maintain orientation if possible
@@ -42,11 +42,23 @@ class Agent(object):
             front_room = adj_rooms[3]
         """
         front_room = adj_rooms[self.orientation]
+        right_room = adj_rooms[self.orientation - 3]  # right = self + 1 = self - 3
+        left_room = adj_rooms[self.orientation - 1]  # left = self - 1
+        back_room = adj_rooms[self.orientation - 2]  # back = self + 2 = self - 2
 
         front_room_i, front_room_j = toCArrayIndex(self.map_size, front_room[0], front_room[1])
+        right_room_i, right_room_j = toCArrayIndex(self.map_size, right_room[0], right_room[1])
+        left_room_i, left_room_j = toCArrayIndex(self.map_size, left_room[0], left_room[1])
+        back_room_i, back_room_j = toCArrayIndex(self.map_size, back_room[0], back_room[1])
+
         if (self.map_real[front_room_i, front_room_j] == RoomReal.Unknown) and (self.map_predict[front_room_i, front_room_j] == RoomPredict.Safe):
-            return Action.GoForward
+            return [Action.GoForward]
+        elif (self.map_real[right_room_i, right_room_j] == RoomReal.Unknown) and (self.map_predict[right_room_i, right_room_j] == RoomPredict.Safe):
+            return [Action.TurnRight, Action.GoForward]
+        elif (self.map_real[left_room_i, left_room_j] == RoomReal.Unknown) and (self.map_predict[left_room_i, left_room_j] == RoomPredict.Safe):
+            return [Action.TurnLeft, Action.GoForward]
         else:
-            pass
+            return [Action.TurnRight, Action.TurnRight, Action.GoForward]
 
 # TODO: How to get back
+# TODO: Handle Breeze and Stench
