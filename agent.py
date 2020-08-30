@@ -19,7 +19,7 @@ class Agent(object):
         self.got_out = None
         self.hit_wumpus_last_turn = None
 
-    def toRelativeOrientationRoom(self, adj_rooms):
+    def toRelativeOrientation(self, adj_rooms):
         """
         Param: array of surrounding rooms
         Return: Oxy position of each room corresponding in each direction, [Front, Right, Back, Left]
@@ -51,55 +51,58 @@ class Agent(object):
 
         What do I need to do ???
         Rules:
-        1. If there is gold -> Grab
-        2. Go to Unknown room with safe prediction, maintain orientation if possible
-        3. From all rooms which are known and safe -> Go forward or Right or Left
-        4. If this is the spawn room -> Climb
-        5. Go back
+            1. If there is gold -> Grab
+            2. Go to Unvisited room with safe prediction, maintain orientation if possible
+            3. If this is the spawn room -> Climb
+            4. From all rooms which are known and safe -> Go Forward or Right or Left
+            5. Go Backward
         """
         cur_i, cur_j = toCArrayIndex(self.map_size, self.current_location[0], self.current_location[1])
         if RoomReal.Glitter in self.map_real[cur_i, cur_j]:
             return [Action.Grab]
 
         adj_rooms = getAdjacents(self.map_size, self.current_location[0], self.current_location[1])  # adjacent rooms of each orientation
-        iden_rooms = self.toRelativeOrientationRoom(adj_rooms)  # adjacent rooms of each relative orientation
+        rel_rooms = self.toRelativeOrientation(adj_rooms)  # adjacent rooms of each relative orientation
 
         # Safe rooms = Visited rooms + (Unvisited and safe rooms)
 
-        iden_safe_rooms = iden_rooms  # only keep safe rooms
-        for i in range(len(iden_safe_rooms)):
-            if iden_safe_rooms[i] is not None:
-                room_i, room_j = toCArrayIndex(self.map_size, iden_safe_rooms[i][0], iden_safe_rooms[i][1])
+        rel_safe_rooms = rel_rooms  # only keep safe rooms
+        for i in range(len(rel_safe_rooms)):
+            if rel_safe_rooms[i] is not None:
+                room_i, room_j = toCArrayIndex(self.map_size, rel_safe_rooms[i][0], rel_safe_rooms[i][1])
                 if RoomPredict.Safe not in self.map_predict[room_i, room_j]:
-                    iden_safe_rooms[i] = None
+                    rel_safe_rooms[i] = None
 
-        iden_safe_unvisited_rooms = iden_safe_rooms  # only keep safe and unvisited rooms
-        for i in range(len(iden_safe_unvisited_rooms)):
-            if iden_safe_unvisited_rooms[i] is not None:
-                room_i, room_j = toCArrayIndex(self.map_size, iden_safe_unvisited_rooms[i][0], iden_safe_unvisited_rooms[i][1])
+        rel_safe_unvisited_rooms = rel_safe_rooms  # only keep safe and unvisited rooms
+        for i in range(len(rel_safe_unvisited_rooms)):
+            if rel_safe_unvisited_rooms[i] is not None:
+                room_i, room_j = toCArrayIndex(self.map_size, rel_safe_unvisited_rooms[i][0], rel_safe_unvisited_rooms[i][1])
                 if RoomReal.Unvisited not in self.map_real[room_i, room_j]:
-                    iden_safe_unvisited_rooms[i] = None
+                    rel_safe_unvisited_rooms[i] = None
 
-        if iden_safe_unvisited_rooms[RelativeOrientation.Front] is not None:
+        # If there is unvisited room
+        if rel_safe_unvisited_rooms[RelativeOrientation.Front] is not None:
             return [Action.GoForward]
-        if iden_safe_unvisited_rooms[RelativeOrientation.Right] is not None:
+        if rel_safe_unvisited_rooms[RelativeOrientation.Right] is not None:
             return [Action.TurnRight, Action.GoForward]
-        if iden_safe_unvisited_rooms[RelativeOrientation.Left] is not None:
+        if rel_safe_unvisited_rooms[RelativeOrientation.Left] is not None:
             return [Action.TurnLeft, Action.GoForward]
 
-        # All rooms is visited
-        if iden_safe_rooms[RelativeOrientation.Front] is not None:
-            return [Action.GoForward]
-        if iden_safe_rooms[RelativeOrientation.Right] is not None:
-            return [Action.TurnRight, Action.GoForward]
-        if iden_safe_rooms[RelativeOrientation.Left] is not None:
-            return [Action.TurnLeft, Action.GoForward]
-
-        # No more way -> Climb up or go back
+        # Climb out
         if self.current_location == self.spawn_location:
             return [Action.Climb]
 
+        # All rooms is visited
+        if rel_safe_rooms[RelativeOrientation.Front] is not None:
+            return [Action.GoForward]
+        if rel_safe_rooms[RelativeOrientation.Right] is not None:
+            return [Action.TurnRight, Action.GoForward]
+        if rel_safe_rooms[RelativeOrientation.Left] is not None:
+            return [Action.TurnLeft, Action.GoForward]
+
+        # No more way -> Go back
         return [Action.TurnLeft, Action.TurnLeft, Action.GoForward]
 
 # TODO: When to shoot
 # TODO: How to know when scream -> use hit_wumpus_last_turn
+# TODO: BFS searching for unvisited room

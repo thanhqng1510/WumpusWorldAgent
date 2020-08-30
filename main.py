@@ -12,7 +12,6 @@ def main():
     world.put(agent)
 
     num_moves = 0
-
     while (not world.isGameOver()) and (num_moves < MAX_MOVES):
         actions = agent.process()
         print('Action:', actions)

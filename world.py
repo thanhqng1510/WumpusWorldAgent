@@ -63,7 +63,7 @@ class World(object):
         # Generate agent spawn location if not provided in the map
         if self.agent_spawn_location is None or self.agent_current_location is None:
             i, j = toCArrayIndex(self.map_size, x, y)
-            while (i is None) or (j is None) or ("G" in self.map[i, j]) and ("P" in self.map[i, j]) or ("W" in self.map[i, j]) or ("B" in self.map[i, j]) or ("S" in self.map[i, j]):  # nothing in the spawn location
+            while (i is None) or (j is None) or ("G" in self.map[i, j]) or ("P" in self.map[i, j]) or ("W" in self.map[i, j]) or ("B" in self.map[i, j]) or ("S" in self.map[i, j]):  # nothing in the spawn location
                 x = randrange(1, self.map_size + 1)
                 y = randrange(1, self.map_size + 1)
                 i, j = toCArrayIndex(self.map_size, x, y)
@@ -150,6 +150,13 @@ class World(object):
         Return: nothing
         
         Let's go !!!
+        Step:
+            1. Insert/Remove data to agent (important: map)
+            2. Update score and other variables
+            3. Adjust map_predict for each assignment in the map
+                a. Check the assigned tile with its adjacents in map_real (except for Safe assignment)
+                b. Safe rules !!!
+                c. Do not run this step if this tile is visited
         """
         pass
 
