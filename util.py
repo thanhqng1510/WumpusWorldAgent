@@ -4,9 +4,7 @@ from enum import IntEnum
 '''class Percept(IntEnum):
     Glitter = 0
     Breeze = 1
-    Stench = 2
-    Scream = 3
-    SunLight = 4'''
+    Stench = 2'''
 
 
 class Action(IntEnum):

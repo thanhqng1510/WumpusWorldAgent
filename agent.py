@@ -53,7 +53,9 @@ class Agent(object):
         Rules:
         1. If there is gold -> Grab
         2. Go to Unknown room with safe prediction, maintain orientation if possible
-        3. If all room is known -> Go forward or Right or Left
+        3. From all rooms which are known and safe -> Go forward or Right or Left
+        4. If this is the spawn room -> Climb
+        5. Go back
         """
         cur_i, cur_j = toCArrayIndex(self.map_size, self.current_location[0], self.current_location[1])
         if RoomReal.Glitter in self.map_real[cur_i, cur_j]:
@@ -93,6 +95,11 @@ class Agent(object):
         if iden_safe_rooms[RelativeOrientation.Left] is not None:
             return [Action.TurnLeft, Action.GoForward]
 
+        # No more way -> Climb up or go back
+        if self.current_location == self.spawn_location:
+            return [Action.Climb]
+
         return [Action.TurnLeft, Action.TurnLeft, Action.GoForward]
 
-# TODO: How to know sunlight and scream, when to climb out
+# TODO: When to shoot
+# TODO: How to know when scream -> use hit_wumpus_last_turn
