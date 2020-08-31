@@ -47,33 +47,19 @@ class Agent(object):
 
         Update map base on agent's last perception
         """
-        cur_i, cur_j = toCArrayIndex(self.map_size, self.current_location[0], self.current_location[1])
         adj_rooms = getAdjacents(self.map_size, self.current_location[0], self.current_location[1])
+        cur_i, cur_j = toCArrayIndex(self.map_size, self.current_location[0], self.current_location[1])
 
-        if (not percepts[Percept.Breeze]) and (not percepts[Percept.Stench]):  # This room is safe
-            self.map_real[cur_i, cur_j] = [False] * 2
-            for room in adj_rooms:
-                if room is not None:
-                    room_i, room_j = toCArrayIndex(self.map_size, room[0], room[1])
-                    self.map_danger[room_i, room_j] = False
+        self.map_real[cur_i, cur_j][RoomReal.Breeze] = percepts[Percept.Breeze]
+        self.map_real[cur_i, cur_j][RoomReal.Stench] = percepts[Percept.Stench]
 
-        else:  # This room is not safe (don't know why)
-            if percepts[Percept.Breeze] and percepts[Percept.Stench]:  # This room is Breeze and Stench
-                self.map_real[cur_i, cur_j] = [True] * 2
-            elif percepts[Percept.Breeze]:  # This room is Breeze only
-                self.map_real[cur_i, cur_j][RoomReal.Breeze] = True
-                self.map_real[cur_i, cur_j][RoomReal.Stench] = False
-            else:  # This room is Stench only
-                self.map_real[cur_i, cur_j][RoomReal.Breeze] = False
-                self.map_real[cur_i, cur_j][RoomReal.Stench] = True
-
-            for room in adj_rooms:
-                if room is not None:
-                    room_i, room_j = toCArrayIndex(self.map_size, room[0], room[1])
-                    if (self.map_danger[room_i, room_j] is not None) and (not self.map_danger[room_i, room_j]):
-                        # If this room is already Safe
-                        continue
-                    self.map_danger[room_i, room_j] = True
+        for room in adj_rooms:
+            if room is not None:
+                room_i, room_j = toCArrayIndex(self.map_size, room[0], room[1])
+                if (self.map_danger[room_i, room_j] is not None) and \
+                        (not self.map_danger[room_i, room_j]):  # If this room is already Safe
+                    continue
+                self.map_danger[room_i, room_j] = (percepts[Percept.Breeze] or percepts[Percept.Stench])
 
     def process(self, percepts):
         """
@@ -85,7 +71,7 @@ class Agent(object):
             1. If there is gold -> Grab
             2. Go to Unvisited room with Safe prediction, maintain Orientation if possible
             3. All adjacent rooms are Visited/Danger
-                a. Find Wumpus -> Shoot
+                a. Find Wumpus in adjacent rooms -> Shoot
                 b. If none exist
                     ba. BFS to the nearest Unvisited room
                     bb. If none exist -> BFS to the spawn room
@@ -101,47 +87,35 @@ class Agent(object):
 
         # Step 2 --------------------------
         # Safe rooms = Visited rooms + (Unvisited and safe rooms)
-        safe_rooms = getAdjacents(self.map_size, self.current_location[0],
-                                  self.current_location[1])  # Adjacent rooms of each orientation
+        adj_rooms = getAdjacents(self.map_size, self.current_location[0],
+                                 self.current_location[1])  # Adjacent rooms of each orientation
 
-        for i in range(len(safe_rooms)):
-            if safe_rooms[i] is not None:
-                room_i, room_j = toCArrayIndex(self.map_size, safe_rooms[i][0], safe_rooms[i][1])
-                if not self.map_danger[room_i, room_j]:
-                    safe_rooms[i] = None
+        safe_unvisited_rooms = adj_rooms  # Keep only save and unvisited rooms
+        for i in range(len(safe_unvisited_rooms)):
+            if safe_unvisited_rooms[i] is not None:
+                room_i, room_j = toCArrayIndex(self.map_size, safe_unvisited_rooms[i][0], safe_unvisited_rooms[i][1])
+                if (self.map_real[room_i, room_j] is not None) or \
+                        self.map_danger[room_i, room_j]:
+                    safe_unvisited_rooms[i] = None
 
-        safe_unvisited_rooms = safe_rooms  # Safe and unvisited rooms
-        for i in range(len(rel_safe_unvisited_rooms)):
-            if rel_safe_unvisited_rooms[i] is not None:
-                room_i, room_j = toCArrayIndex(self.map_size, rel_safe_unvisited_rooms[i][0],
-                                               rel_safe_unvisited_rooms[i][1])
-                if RoomReal.Unvisited not in self.map_real[room_i, room_j]:
-                    rel_safe_unvisited_rooms[i] = None
-
-        relative_rooms = self.toRelativeOrientation(adj_rooms)  # adjacent rooms of each relative orientation
+        relative_rooms = self.toRelativeOrientation(adj_rooms)
+        relative_safe_unvisited_rooms = self.toRelativeOrientation(safe_unvisited_rooms)
 
         # If there is unvisited room
-        if rel_safe_unvisited_rooms[RelativeOrientation.Front] is not None:
-            return [Action.GoForward]
-        if rel_safe_unvisited_rooms[RelativeOrientation.Right] is not None:
-            return [Action.TurnRight, Action.GoForward]
-        if rel_safe_unvisited_rooms[RelativeOrientation.Left] is not None:
-            return [Action.TurnLeft, Action.GoForward]
+        if relative_safe_unvisited_rooms[RelativeOrientation.Front] is not None:
+            actions.append(Action.GoForward)
+        elif relative_safe_unvisited_rooms[RelativeOrientation.Right] is not None:
+            actions.append(Action.TurnRight)
+            actions.append(Action.GoForward)
+        elif relative_safe_unvisited_rooms[RelativeOrientation.Left] is not None:
+            actions.append(Action.TurnLeft)
+            actions.append(Action.GoForward)
+        # ---------------------------------
 
-        # Climb out
-        if self.current_location == self.spawn_location:
-            return [Action.Climb]
+        # Step 3a -----------------------
 
-        # All rooms is visited
-        if rel_safe_rooms[RelativeOrientation.Front] is not None:
-            return [Action.GoForward]
-        if rel_safe_rooms[RelativeOrientation.Right] is not None:
-            return [Action.TurnRight, Action.GoForward]
-        if rel_safe_rooms[RelativeOrientation.Left] is not None:
-            return [Action.TurnLeft, Action.GoForward]
+        # ---------------------------------
 
-        # No more way -> Go back
-        return [Action.TurnLeft, Action.TurnLeft, Action.GoForward]
+        # Step 3b -----------------------
 
-# TODO: When to shoot
-# TODO: How to know when scream -> use hit_wumpus_last_turn
+        # ---------------------------------

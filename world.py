@@ -80,8 +80,8 @@ class World(object):
         self.agent_hit_wumpus_last_turn = False
         self.total_score = 0
 
-        # Map to save the real data (agent's point of view)
-        agent.map_real = np.full((self.map_size, self.map_size, 1), [None] * 2, dtype=object)
+        # Map to save the real data (agent's point of view), format of [Breeze, Stench]
+        agent.map_real = np.empty((self.map_size, self.map_size, 2), dtype=object)
 
         # Map to save the agent's predictions
         agent.map_danger = np.empty((self.map_size, self.map_size, 1), dtype=object)
@@ -157,3 +157,5 @@ class World(object):
         How well do I perform ???
         """
         return self.total_score
+
+# TODO: How to know when Wumpus scream -> use hit_wumpus_last_turn
