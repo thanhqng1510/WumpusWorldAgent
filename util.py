@@ -36,16 +36,12 @@ class RelativeOrientation(IntEnum):
 
 
 class RoomReal(IntEnum):
-    Unvisited = 0
-    Safe = 1
-    Breeze = 2
-    Stench = 3
+    Breeze = 0
+    Stench = 1
 
 
 class RoomPredict(IntEnum):
-    Unknown = 0
-    Safe = 1
-    Danger = 2
+    Danger = 0
 
 
 def getAdjacents(map_size, x, y):

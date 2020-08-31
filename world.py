@@ -62,7 +62,12 @@ class World(object):
         # Generate agent spawn location if not provided in the map
         if self.agent_current_location is None:
             i, j = toCArrayIndex(self.map_size, x, y)
-            while (i is None) or (j is None) or ("G" in self.map[i, j]) or ("P" in self.map[i, j]) or ("W" in self.map[i, j]) or ("B" in self.map[i, j]) or ("S" in self.map[i, j]):  # nothing in the spawn location
+            while (i is None) or (j is None) or \
+                    ("G" in self.map[i, j]) or \
+                    ("P" in self.map[i, j]) or \
+                    ("W" in self.map[i, j]) or \
+                    ("B" in self.map[i, j]) or \
+                    ("S" in self.map[i, j]):  # nothing in the spawn location
                 x = randrange(1, self.map_size + 1)
                 y = randrange(1, self.map_size + 1)
                 i, j = toCArrayIndex(self.map_size, x, y)
@@ -76,20 +81,18 @@ class World(object):
         self.total_score = 0
 
         # Map to save the real data (agent's point of view)
-        agent.map_real = np.full((self.map_size, self.map_size, 1), [RoomReal.Unvisited], dtype=object)
+        agent.map_real = np.full((self.map_size, self.map_size, 1), [None] * 2, dtype=object)
 
         # Map to save the agent's predictions
-        agent.map_predict = np.full((self.map_size, self.map_size, 1), [RoomPredict.Unknown], dtype=object)
+        agent.map_danger = np.empty((self.map_size, self.map_size, 1), dtype=object)
 
         agent.map_size = self.map_size
         agent.spawn_location = agent.current_location = self.agent_current_location
         agent.orientation = Orientation.Right
 
-        # The spawn location is (of course) safe
+        # The spawn location is (of course) not danger
         agent_spawn_i, agent_spawn_j = toCArrayIndex(self.map_size, agent.spawn_location[0], agent.spawn_location[1])
-
-        agent.map_real[agent_spawn_i, agent_spawn_j] = [RoomReal.Safe]
-        agent.map_predict[agent_spawn_i, agent_spawn_j] = [RoomPredict.Safe]
+        agent.map_danger[agent_spawn_i, agent_spawn_j] = False
 
     def isGameOver(self):
         """
@@ -104,12 +107,11 @@ class World(object):
     def getPercept(self):
         """
         Param: nothing
-        Return: an array of boolean with format of
-        [Glitter, Breeze, Stench, Scream]
+        Return: an array of boolean with format of [Glitter, Breeze, Stench, Scream]
 
         What do I know up till now ???
         """
-        res = [False, False, False, False]
+        res = [False] * 4
 
         if self.agent_hit_wumpus_last_turn:
             res[Percept.Scream] = True

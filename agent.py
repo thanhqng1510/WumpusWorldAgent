@@ -3,13 +3,12 @@ from util import *
 
 class Agent(object):
     def __init__(self):
-        # Can be [Unknown, Safe, Breeze, Stench] save the room already discovered
-        # Glitter and SunLight is also Save
+        # Format of [Breeze, Stench]
         self.map_real = None
 
-        # Can be [Unknown, Safe, Pit, Wumpus, MaybePit, MaybeWumpus]
         # Check adjacency after every update
-        self.map_predict = None
+        # Save danger rooms
+        self.map_danger = None
 
         self.map_size = None
         self.spawn_location = None
@@ -21,7 +20,7 @@ class Agent(object):
         Param: array of surrounding rooms
         Return: Oxy position of each room corresponding in each direction, [Front, Right, Back, Left]
         """
-        res = [None, None, None, None]
+        res = [None] * 4
 
         """
         front_room = None
@@ -41,71 +40,85 @@ class Agent(object):
 
         return res
 
+    def updateMap(self, percepts):
+        """
+        Param: an array of Percepts format of [Glitter, Breeze, Stench, Scream]
+        Return: nothing
+
+        Update map base on agent's last perception
+        """
+        cur_i, cur_j = toCArrayIndex(self.map_size, self.current_location[0], self.current_location[1])
+        adj_rooms = getAdjacents(self.map_size, self.current_location[0], self.current_location[1])
+
+        if (not percepts[Percept.Breeze]) and (not percepts[Percept.Stench]):  # This room is safe
+            self.map_real[cur_i, cur_j] = [False] * 2
+            for room in adj_rooms:
+                if room is not None:
+                    room_i, room_j = toCArrayIndex(self.map_size, room[0], room[1])
+                    self.map_danger[room_i, room_j] = False
+
+        else:  # This room is not safe (don't know why)
+            if percepts[Percept.Breeze] and percepts[Percept.Stench]:  # This room is Breeze and Stench
+                self.map_real[cur_i, cur_j] = [True] * 2
+            elif percepts[Percept.Breeze]:  # This room is Breeze only
+                self.map_real[cur_i, cur_j][RoomReal.Breeze] = True
+                self.map_real[cur_i, cur_j][RoomReal.Stench] = False
+            else:  # This room is Stench only
+                self.map_real[cur_i, cur_j][RoomReal.Breeze] = False
+                self.map_real[cur_i, cur_j][RoomReal.Stench] = True
+
+            for room in adj_rooms:
+                if room is not None:
+                    room_i, room_j = toCArrayIndex(self.map_size, room[0], room[1])
+                    if (self.map_danger[room_i, room_j] is not None) and (not self.map_danger[room_i, room_j]):
+                        # If this room is already Safe
+                        continue
+                    self.map_danger[room_i, room_j] = True
+
     def process(self, percepts):
         """
         Param: Percept of [Glitter, Breeze, Stench, Scream]
         Return: an array of Action
 
         What do I need to do ???
-        Rules:
+        Steps:
             1. If there is gold -> Grab
-            2. Go to Unvisited room with safe prediction, maintain orientation if possible
-            3. If this is the spawn room -> Climb
-            4. From all rooms which are known and safe -> Go Forward or Right or Left
-            5. Go Backward
+            2. Go to Unvisited room with Safe prediction, maintain Orientation if possible
+            3. All adjacent rooms are Visited/Danger
+                a. Find Wumpus -> Shoot
+                b. If none exist
+                    ba. BFS to the nearest Unvisited room
+                    bb. If none exist -> BFS to the spawn room
         """
-        cur_i, cur_j = toCArrayIndex(self.map_size, self.current_location[0], self.current_location[1])
+        self.updateMap(percepts)
 
-        if percepts[Percept.Breeze] is True:
-            self.map_real[cur_i, cur_j] = RoomReal.Breeze
+        actions = []
 
+        # Step 1 --------------------------
+        if percepts[Percept.Glitter]:
+            actions.append(Action.Grab)
+        # ---------------------------------
 
-
-        
-
-
-
-        if percepts[Percept.Glitter] is True:
-            return [Action.Grab]
-
-
-
-
-
-        # All adjacents of spawn room
-        adj_rooms = getAdjacents(self.map_size, agent.spawn_location[0], agent.spawn_location[1])
-
-        # Room next to spawn room is (of course) predict to be safe
-        for room in adj_rooms:
-            if room is not None:
-                room_i, room_j = toCArrayIndex(self.map_size, room[0], room[1])
-                agent.map_predict[room_i, room_j] = [RoomPredict.Safe]
-
-
-
-
-
-
-
-
-        adj_rooms = getAdjacents(self.map_size, self.current_location[0], self.current_location[1])  # adjacent rooms of each orientation
-        rel_rooms = self.toRelativeOrientation(adj_rooms)  # adjacent rooms of each relative orientation
-
+        # Step 2 --------------------------
         # Safe rooms = Visited rooms + (Unvisited and safe rooms)
+        safe_rooms = getAdjacents(self.map_size, self.current_location[0],
+                                  self.current_location[1])  # Adjacent rooms of each orientation
 
-        rel_safe_rooms = rel_rooms  # only keep safe rooms
-        for i in range(len(rel_safe_rooms)):
-            if rel_safe_rooms[i] is not None:
-                room_i, room_j = toCArrayIndex(self.map_size, rel_safe_rooms[i][0], rel_safe_rooms[i][1])
-                if RoomPredict.Safe not in self.map_predict[room_i, room_j]:
-                    rel_safe_rooms[i] = None
+        for i in range(len(safe_rooms)):
+            if safe_rooms[i] is not None:
+                room_i, room_j = toCArrayIndex(self.map_size, safe_rooms[i][0], safe_rooms[i][1])
+                if not self.map_danger[room_i, room_j]:
+                    safe_rooms[i] = None
 
-        rel_safe_unvisited_rooms = rel_safe_rooms  # only keep safe and unvisited rooms
+        safe_unvisited_rooms = safe_rooms  # Safe and unvisited rooms
         for i in range(len(rel_safe_unvisited_rooms)):
             if rel_safe_unvisited_rooms[i] is not None:
-                room_i, room_j = toCArrayIndex(self.map_size, rel_safe_unvisited_rooms[i][0], rel_safe_unvisited_rooms[i][1])
+                room_i, room_j = toCArrayIndex(self.map_size, rel_safe_unvisited_rooms[i][0],
+                                               rel_safe_unvisited_rooms[i][1])
                 if RoomReal.Unvisited not in self.map_real[room_i, room_j]:
                     rel_safe_unvisited_rooms[i] = None
+
+        relative_rooms = self.toRelativeOrientation(adj_rooms)  # adjacent rooms of each relative orientation
 
         # If there is unvisited room
         if rel_safe_unvisited_rooms[RelativeOrientation.Front] is not None:
@@ -132,4 +145,3 @@ class Agent(object):
 
 # TODO: When to shoot
 # TODO: How to know when scream -> use hit_wumpus_last_turn
-# TODO: BFS searching for unvisited room
