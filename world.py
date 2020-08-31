@@ -7,7 +7,6 @@ class World(object):
     def __init__(self, map):
         self.map = map
         self.map_size = len(map)
-        self.agent_spawn_location = None
         self.agent_current_location = None
         self.agent_orientation = None
         self.agent_alive = None
@@ -27,7 +26,7 @@ class World(object):
                     self.remain_wumpus += 1
                 if "A" in map[i, j]:
                     x, y = toOxyIndex(self.map_size, i, j)
-                    self.agent_spawn_location = self.agent_current_location = [x, y]
+                    self.agent_current_location = [x, y]
 
     @classmethod
     def fromFile(cls, file_path):
@@ -61,14 +60,14 @@ class World(object):
         at a desired position or at random
         """
         # Generate agent spawn location if not provided in the map
-        if self.agent_spawn_location is None or self.agent_current_location is None:
+        if self.agent_current_location is None:
             i, j = toCArrayIndex(self.map_size, x, y)
             while (i is None) or (j is None) or ("G" in self.map[i, j]) or ("P" in self.map[i, j]) or ("W" in self.map[i, j]) or ("B" in self.map[i, j]) or ("S" in self.map[i, j]):  # nothing in the spawn location
                 x = randrange(1, self.map_size + 1)
                 y = randrange(1, self.map_size + 1)
                 i, j = toCArrayIndex(self.map_size, x, y)
 
-            self.agent_spawn_location = self.agent_current_location = [x, y]
+            self.agent_current_location = [x, y]
 
         self.agent_orientation = Orientation.Right
         self.agent_alive = True
@@ -83,25 +82,14 @@ class World(object):
         agent.map_predict = np.full((self.map_size, self.map_size, 1), [RoomPredict.Unknown], dtype=object)
 
         agent.map_size = self.map_size
-        agent.spawn_location = agent.current_location = self.agent_spawn_location
+        agent.spawn_location = agent.current_location = self.agent_current_location
         agent.orientation = Orientation.Right
-        agent.alive = True
-        agent.got_out = False
-        agent.hit_wumpus_last_turn = False
 
         # The spawn location is (of course) safe
         agent_spawn_i, agent_spawn_j = toCArrayIndex(self.map_size, agent.spawn_location[0], agent.spawn_location[1])
+
         agent.map_real[agent_spawn_i, agent_spawn_j] = [RoomReal.Safe]
-
-        # All adjacents of spawn room
-        adj_rooms = getAdjacents(self.map_size, agent.spawn_location[0], agent.spawn_location[1])
-
-        # Room next to spawn room is (of course) predict to be safe
         agent.map_predict[agent_spawn_i, agent_spawn_j] = [RoomPredict.Safe]
-        for room in adj_rooms:
-            if room is not None:
-                room_i, room_j = toCArrayIndex(self.map_size, room[0], room[1])
-                agent.map_predict[room_i, room_j] = [RoomPredict.Safe]
 
     def isGameOver(self):
         """
@@ -113,22 +101,20 @@ class World(object):
         """
         return (not self.agent_alive) or (self.remain_wumpus == 0 and self.remain_gold == 0) or self.agent_got_out
 
-    '''def getPercept(self):
+    def getPercept(self):
         """
         Param: nothing
         Return: an array of boolean with format of
-        [Glitter, Breeze, Stench, Scream, SunLight]
+        [Glitter, Breeze, Stench, Scream]
 
         What do I know up till now ???
         """
-        res = [False, False, False, False, False]
+        res = [False, False, False, False]
 
         if self.agent_hit_wumpus_last_turn:
             res[Percept.Scream] = True
 
         i, j = toCArrayIndex(self.map_size, self.agent_current_location[0], self.agent_current_location[1])
-        if [i, j] == self.agent_spawn_location:
-            res[Percept.SunLight] = True
         if "G" in self.map[i, j]:
             res[Percept.Glitter] = True
 
@@ -142,7 +128,7 @@ class World(object):
                     res[Percept.Stench] = True
 
         self.agent_hit_wumpus_last_turn = False
-        return res'''
+        return res
 
     def execute(self, agent, action):
         """
@@ -152,8 +138,9 @@ class World(object):
         Let's go !!!
         Step:
             1. Insert/Remove data to agent (important: map)
-            2. Update score and other variables
-            3. Adjust map_predict for each assignment in the map
+            2. Check for Breeze or Stench around current tile (on map_predict) -> If exists, can we identify Pit or Wumpus ?
+            3. Update score and other variables
+            4. Adjust map_predict for each assignment in this map
                 a. Check the assigned tile with its adjacents in map_real (except for Safe assignment)
                 b. Safe rules !!!
                 c. Do not run this step if this tile is visited

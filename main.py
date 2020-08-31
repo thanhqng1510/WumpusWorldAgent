@@ -13,7 +13,10 @@ def main():
 
     num_moves = 0
     while (not world.isGameOver()) and (num_moves < MAX_MOVES):
-        actions = agent.process()
+        percepts = world.getPercept()
+        print('Percept:', percepts)
+
+        actions = agent.process(percepts)
         print('Action:', actions)
 
         world.execute(agent, actions)

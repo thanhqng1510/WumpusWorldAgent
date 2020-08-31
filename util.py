@@ -1,10 +1,11 @@
 from enum import IntEnum
 
 
-'''class Percept(IntEnum):
+class Percept(IntEnum):
     Glitter = 0
     Breeze = 1
-    Stench = 2'''
+    Stench = 2
+    Scream = 3
 
 
 class Action(IntEnum):
@@ -36,19 +37,15 @@ class RelativeOrientation(IntEnum):
 
 class RoomReal(IntEnum):
     Unvisited = 0
-    Glitter = 1
-    Safe = 2
-    Breeze = 3
-    Stench = 4
+    Safe = 1
+    Breeze = 2
+    Stench = 3
 
 
 class RoomPredict(IntEnum):
     Unknown = 0
     Safe = 1
-    Pit = 2
-    Wumpus = 3
-    MaybePit = 4
-    MaybeWumpus = 5
+    Danger = 2
 
 
 def getAdjacents(map_size, x, y):

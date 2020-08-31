@@ -15,9 +15,6 @@ class Agent(object):
         self.spawn_location = None
         self.current_location = None
         self.orientation = None
-        self.alive = None
-        self.got_out = None
-        self.hit_wumpus_last_turn = None
 
     def toRelativeOrientation(self, adj_rooms):
         """
@@ -44,9 +41,9 @@ class Agent(object):
 
         return res
 
-    def process(self):
+    def process(self, percepts):
         """
-        Param: nothing
+        Param: Percept of [Glitter, Breeze, Stench, Scream]
         Return: an array of Action
 
         What do I need to do ???
@@ -58,8 +55,38 @@ class Agent(object):
             5. Go Backward
         """
         cur_i, cur_j = toCArrayIndex(self.map_size, self.current_location[0], self.current_location[1])
-        if RoomReal.Glitter in self.map_real[cur_i, cur_j]:
+
+        if percepts[Percept.Breeze] is True:
+            self.map_real[cur_i, cur_j] = RoomReal.Breeze
+
+
+
+        
+
+
+
+        if percepts[Percept.Glitter] is True:
             return [Action.Grab]
+
+
+
+
+
+        # All adjacents of spawn room
+        adj_rooms = getAdjacents(self.map_size, agent.spawn_location[0], agent.spawn_location[1])
+
+        # Room next to spawn room is (of course) predict to be safe
+        for room in adj_rooms:
+            if room is not None:
+                room_i, room_j = toCArrayIndex(self.map_size, room[0], room[1])
+                agent.map_predict[room_i, room_j] = [RoomPredict.Safe]
+
+
+
+
+
+
+
 
         adj_rooms = getAdjacents(self.map_size, self.current_location[0], self.current_location[1])  # adjacent rooms of each orientation
         rel_rooms = self.toRelativeOrientation(adj_rooms)  # adjacent rooms of each relative orientation
