@@ -12,21 +12,37 @@ def main():
     world.put(agent)
 
     num_moves = 0
-    while (not world.isGameOver()) and (num_moves < MAX_MOVES):
+    step = 1
+    result = None
+
+    while (result is None) and (num_moves < MAX_MOVES):
+        print('Step:', step)
+        step += 1
+
+        print('Current score:', world.getScore())
+
         percepts = world.getPercept()
-        print('Percept:', percepts)
+        printPercept(percepts)
 
         actions = agent.process(percepts)
-        print('Action:', actions)
+        agent.printMap()
+        printAction(actions)
 
         world.execute(agent, actions)
         num_moves += 1
         print('--------------------')
 
+        result = world.isGameOver()
+
+    if result == GameOver.Dead:
+        print('Agent has been killed')
+    elif result == GameOver.ExploredAll:
+        print('Agent has grabbed all gold and killed all wumpus')
+    else:  # Agent climb out
+        print('Agent has climbed out')
+
     score = world.getScore()
-    print('Your score is:', score)
+    print('Agent\'s score:', score)
 
 
 main()
-
-# TODO: print map each step

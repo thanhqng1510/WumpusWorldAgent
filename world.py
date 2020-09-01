@@ -1,17 +1,21 @@
 from util import *
-import numpy as np
 from random import randrange
+from copy import deepcopy
 
 
 class World(object):
     def __init__(self, map):
+        """
+        Constructor of class World
+
+        :param map: an nparray map
+        """
         self.map = map
         self.map_size = len(map)
         self.agent_current_location = None
         self.agent_orientation = None
         self.agent_alive = None
         self.agent_got_out = None
-        self.agent_hit_wumpus_last_turn = None
         self.total_score = None
         self.remain_wumpus = 0
         self.remain_gold = 0
@@ -20,142 +24,178 @@ class World(object):
         # Find the spawn location in the map if existed
         for i in range(self.map_size):
             for j in range(self.map_size):
-                if "G" in map[i, j]:
+                if "G" in map[i][j]:
                     self.remain_gold += 1
-                if "W" in map[i, j]:
+                if "W" in map[i][j]:
                     self.remain_wumpus += 1
-                if "A" in map[i, j]:
-                    x, y = toOxyIndex(self.map_size, i, j)
-                    self.agent_current_location = [x, y]
+                if "A" in map[i][j]:
+                    self.agent_current_location = [i, j]
 
     @classmethod
     def fromFile(cls, file_path):
         """
-        Param: path to a txt file
-        Return: a World instance
+        A factory function of class World
 
-        Generate map from file
+        :param file_path: path to a text-file map
+        :return: an instance of class World
         """
         file_object = open(file_path)
 
         n = int(file_object.readline())
-        map = np.zeros((n, n), dtype=object)
+        map = [['' for _ in range(n)] for _ in range(n)]
 
         for i in range(n):
-            line = file_object.readline().split('.')
-            line[-1] = line[-1][:-1]
+            rooms = file_object.readline().split('.')
+            rooms[-1] = rooms[-1][:-1]
 
             for j in range(int(n)):
-                map[i, j] = line[j]
+                map[i][j] = rooms[j]
 
         file_object.close()
         return cls(map)
 
-    def put(self, agent, x=None, y=None):
+    def put(self, agent, i=None, j=None):
         """
-        Param: an Agent instance, Oxy position to put agent to
-        Return: nothing
-
         Put an agent to the map
-        at a desired position or at random
+
+        :param agent: an Agent instance
+        :param i: desired location of agent on x coordinate
+        :param j: desired location of agent on y coordinate
         """
         # Generate agent spawn location if not provided in the map
         if self.agent_current_location is None:
-            i, j = toCArrayIndex(self.map_size, x, y)
             while (i is None) or (j is None) or \
-                    ("G" in self.map[i, j]) or \
-                    ("P" in self.map[i, j]) or \
-                    ("W" in self.map[i, j]) or \
-                    ("B" in self.map[i, j]) or \
-                    ("S" in self.map[i, j]):  # nothing in the spawn location
-                x = randrange(1, self.map_size + 1)
-                y = randrange(1, self.map_size + 1)
-                i, j = toCArrayIndex(self.map_size, x, y)
+                    ("G" in self.map[i][j]) or \
+                    ("P" in self.map[i][j]) or \
+                    ("W" in self.map[i][j]) or \
+                    ("B" in self.map[i][j]) or \
+                    ("S" in self.map[i][j]):  # nothing in the spawn location
+                i = randrange(0, self.map_size)
+                j = randrange(0, self.map_size)
 
-            self.agent_current_location = [x, y]
+            self.agent_current_location = [i, j]
 
         self.agent_orientation = Orientation.Right
         self.agent_alive = True
         self.agent_got_out = False
-        self.agent_hit_wumpus_last_turn = False
         self.total_score = 0
 
         # Map to save the real data (agent's point of view), format of [Breeze, Stench]
-        agent.map_real = np.empty((self.map_size, self.map_size, 2), dtype=object)
+        agent.map_real = [[[None, None] for _ in range(self.map_size)] for _ in range(self.map_size)]
 
         # Map to save the agent's predictions
-        agent.map_danger = np.empty((self.map_size, self.map_size, 1), dtype=object)
+        agent.map_danger = [[None for _ in range(self.map_size)] for _ in range(self.map_size)]
 
         agent.map_size = self.map_size
-        agent.spawn_location = agent.current_location = self.agent_current_location
+        agent.spawn_location = deepcopy(self.agent_current_location)
+        agent.current_location = deepcopy(self.agent_current_location)
         agent.orientation = Orientation.Right
 
         # The spawn location is (of course) not danger
-        agent_spawn_i, agent_spawn_j = toCArrayIndex(self.map_size, agent.spawn_location[0], agent.spawn_location[1])
-        agent.map_danger[agent_spawn_i, agent_spawn_j] = False
+        agent_spawn_i, agent_spawn_j = agent.spawn_location[0], agent.spawn_location[1]
+        agent.map_danger[agent_spawn_i][agent_spawn_j] = False
 
     def isGameOver(self):
         """
-        Param: nothing
-        Return: boolean
+        To tell when the game is over
 
-        Is the game over yet ???
-        I don't care if Lose or Win
+        :return: tell how the game ends (None of the game is not over yet)
         """
-        return (not self.agent_alive) or (self.remain_wumpus == 0 and self.remain_gold == 0) or self.agent_got_out
+        if not self.agent_alive:
+            return GameOver.Dead
+        if self.remain_wumpus == 0 and self.remain_gold == 0:
+            return GameOver.ExploredAll
+        if self.agent_got_out:
+            return GameOver.GotOut
+        return None
 
     def getPercept(self):
         """
-        Param: nothing
-        Return: an array of boolean with format of [Glitter, Breeze, Stench, Scream]
+        Get to know the environment of this room
 
-        What do I know up till now ???
+        :return: an array of Percept in format of [Glitter, Breeze, Stench]
         """
-        res = [False] * 4
+        res = [False] * 3
+        cur_i, cur_j = self.agent_current_location[0], self.agent_current_location[1]
 
-        if self.agent_hit_wumpus_last_turn:
-            res[Percept.Scream] = True
+        res[Percept.Glitter] = ("G" in self.map[cur_i][cur_j])
 
-        i, j = toCArrayIndex(self.map_size, self.agent_current_location[0], self.agent_current_location[1])
-        if "G" in self.map[i, j]:
-            res[Percept.Glitter] = True
-
-        adj_rooms = getAdjacents(self.map_size, self.agent_current_location[0], self.agent_current_location[1])
+        adj_rooms = getAdjacents(self.map_size, cur_i, cur_j)
         for room in adj_rooms:
             if room is not None:
-                room_i, room_j = toCArrayIndex(self.map_size, room[0], room[1])
-                if "P" in self.map[room_i, room_j]:
+                room_i, room_j = room[0], room[1]
+                if "P" in self.map[room_i][room_j]:
                     res[Percept.Breeze] = True
-                if "W" in self.map[room_i, room_j]:
+                if "W" in self.map[room_i][room_j]:
                     res[Percept.Stench] = True
 
-        self.agent_hit_wumpus_last_turn = False
         return res
 
-    def execute(self, agent, action):
-        """
-        Param: an agent and an Action to perform
-        Return: nothing
-        
-        Let's go !!!
-        Step:
-            1. Insert/Remove data to agent (important: map)
-            2. Check for Breeze or Stench around current tile (on map_predict) -> If exists, can we identify Pit or Wumpus ?
-            3. Update score and other variables
-            4. Adjust map_predict for each assignment in this map
-                a. Check the assigned tile with its adjacents in map_real (except for Safe assignment)
-                b. Safe rules !!!
-                c. Do not run this step if this tile is visited
-        """
-        pass
+    def execute(self, agent, actions):
+        score_table = {
+            Action.GoForward: -10,
+            Action.TurnLeft: 0,
+            Action.TurnRight: 0,
+            Action.Grab: 100,
+            Action.Shoot: -100,
+            Action.Climb: 10
+        }
+
+        direction_table = {
+            3: Orientation.Left,
+            2: Orientation.Down,
+            1: Orientation.Right,
+            0: Orientation.Up,
+            -1: Orientation.Left,
+            -2: Orientation.Down,
+            -3: Orientation.Right
+        }
+
+        for action in actions:
+            self.total_score += score_table[action]
+
+            if action == Action.Climb:
+                self.agent_got_out = True
+
+            elif action == Action.Shoot:
+                front_room = deepcopy(self.agent_current_location)
+                if self.agent_orientation == Orientation.Up:
+                    front_room[0] -= 1
+                elif self.agent_orientation == Orientation.Right:
+                    front_room[1] += 1
+                elif self.agent_orientation == Orientation.Down:
+                    front_room[0] += 1
+                else:
+                    front_room[1] -= 1
+                front_i, front_j = front_room[0], front_room[1]
+                if "W" in self.map[front_i][front_j]:
+                    self.map[front_i][front_j] = self.map[front_i][front_j].replace("W", "")
+                    self.remain_wumpus -= 1
+
+            elif action == Action.Grab:
+                self.remain_gold -= 1
+
+            elif action == Action.TurnRight:
+                agent.orientation = self.agent_orientation = direction_table[self.agent_orientation - 3]
+
+            elif action == Action.TurnLeft:
+                agent.orientation = self.agent_orientation = direction_table[self.agent_orientation - 1]
+
+            else:  # GoForward
+                if self.agent_orientation == Orientation.Up:
+                    self.agent_current_location[0] -= 1
+                elif self.agent_orientation == Orientation.Right:
+                    self.agent_current_location[1] += 1
+                elif self.agent_orientation == Orientation.Down:
+                    self.agent_current_location[0] += 1
+                else:
+                    self.agent_current_location[1] -= 1
+                agent.current_location = deepcopy(self.agent_current_location)
 
     def getScore(self):
         """
-        Param: nothing
-        Return: get the score of this game
+        Retrieve the total score of this try
 
-        How well do I perform ???
+        :return: total score
         """
         return self.total_score
-
-# TODO: How to know when Wumpus scream -> use hit_wumpus_last_turn
